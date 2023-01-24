@@ -24,7 +24,7 @@ services:
   # MySQL Service
   mysql:
     env_file:
-      - ../.env
+      - ./.env
     build:
       context: ./mysql/
     container_name: touchon_mysql
@@ -44,7 +44,7 @@ services:
   # PHP Service
   php-fpm:
     env_file:
-      ../.env
+      ./.env
     build:
       context: ./php-fpm/
       dockerfile: Dockerfile
