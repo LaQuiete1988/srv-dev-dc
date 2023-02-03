@@ -36,5 +36,5 @@ EOF
   rm -f $tfile
 fi
 
-# exec /usr/bin/mysqld --user=mysql --console
-exec /bin/sh -c "crond && mysqld --user=mysql --console"
+exec /usr/bin/mysqld --user=mysql --port=${MYSQL_PORT} --console
+#exec /bin/sh -c "crond && mysqld --user=mysql --console"

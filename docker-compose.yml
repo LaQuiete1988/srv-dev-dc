@@ -7,33 +7,37 @@ services:
   nginx:
     build:
       context: ./nginx/
-    container_name: touchon_nginx
+    container_name: nginx
     restart: always
     tty: true
     ports:
-      - 80:80
+      - 81:81
+      - 82:82
+      - 83:83
       - 8080:8080
     volumes:
-      - admcore:/var/www
+      - app_dev_1:/var/www
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
     depends_on:
-      - php-fpm
+      - php_dev_1
     networks:
       - touchon-network
 
-  # MySQL Service
-  mysql:
+  # MySQL Service For Dev 1
+  mysql_dev_1:
     env_file:
       - ./.env
+    environment:
+      MYSQL_PORT: 33061
     build:
       context: ./mysql/
-    container_name: touchon_mysql
+    container_name: mysql_dev_1
     restart: always
     tty: true
     ports:
-      - 3306:3306
+      - 33061:33061
     volumes:
-      - mysqldata:/var/lib/mysql
+      - mysqldata_dev_1:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 5s
@@ -41,41 +45,139 @@ services:
     networks:
       - touchon-network
 
-  # PHP Service
-  php-fpm:
+  # MySQL Service For Dev 2
+  mysql_dev_2:
     env_file:
-      ./.env
+      - ./.env
+    environment:
+      MYSQL_PORT: 33062
     build:
-      context: ./php-fpm/
-      dockerfile: Dockerfile
-    container_name: touchon_php-fpm
+      context: ./mysql/
+    container_name: mysql_dev_2
     restart: always
     tty: true
     ports:
-      - 8000:8000
-      - 9000:9000
+      - 33062:33062
+    volumes:
+      - mysqldata_dev_2:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      retries: 10
+    networks:
+      - touchon-network
+
+  # MySQL Service For Dev-Srv 3
+  mysql_dev_3:
+    env_file:
+      - ./.env
+    environment:
+      MYSQL_PORT: 33063
+    build:
+      context: ./mysql/
+    container_name: mysql_dev_3
+    restart: always
+    tty: true
+    ports:
+      - 33063:33063
+    volumes:
+      - mysqldata_dev_3:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      retries: 10
+    networks:
+      - touchon-network
+
+  # PHP Service for Dev 1
+  php_dev_1:
+    env_file:
+      ./.env
+    environment:
+      DB_HOST: mysql_dev_1
+      DB_PORT: 33061
+      PHP_PORT: 9001
+    build:
+      context: ./php-fpm/
+      dockerfile: Dockerfile
+    container_name: php_dev_1
+    restart: always
+    tty: true
     working_dir: /var/www/
     depends_on:
-      mysql:
+      mysql_dev_1:
         condition: service_healthy
     volumes:
-      - admcore:/var/www
+      - app_dev_1:/var/www
+    networks:
+      - touchon-network
+
+# PHP Service for Dev 2
+  php_dev_2:
+    env_file:
+      ./.env
+    environment:
+      DB_HOST: mysql_dev_2
+      DB_PORT: 33062
+      PHP_PORT: 9002
+    build:
+      context: ./php-fpm/
+      dockerfile: Dockerfile
+    container_name: php_dev_2
+    restart: always
+    tty: true
+    working_dir: /var/www/
+    depends_on:
+      mysql_dev_2:
+        condition: service_healthy
+    volumes:
+      - app_dev_2:/var/www
+    networks:
+      - touchon-network
+
+# PHP Service for Dev 3
+  php_dev_3:
+    env_file:
+      ./.env
+    environment:
+      DB_HOST: mysql_dev_3
+      DB_PORT: 33063
+      PHP_PORT: 9003
+    build:
+      context: ./php-fpm/
+      dockerfile: Dockerfile
+    container_name: php_dev_3
+    restart: always
+    tty: true
+    working_dir: /var/www/
+    depends_on:
+      mysql_dev_3:
+        condition: service_healthy
+    volumes:
+      - app_dev_3:/var/www
     networks:
       - touchon-network
 
   # PhpMyAdmin Service
   phpmyadmin:
     image: phpmyadmin:5.2
-    container_name: touchon_phpmyadmin
+    container_name: pma
     restart: always
     tty: true
     ports:
       - 7000:80
     environment:
-       PMA_HOST: mysql
-       PMA_PORT: 3306
+        PMA_ARBITRARY: 1
+  #     PMA_HOST: mysql
+  #     PMA_PORT: 33061
     depends_on:
-      mysql:
+      mysql_dev_1:
+        condition: service_healthy
+    depends_on:
+      mysql_dev_2:
+        condition: service_healthy
+    depends_on:
+      mysql_dev_3:
         condition: service_healthy
     networks:
       - touchon-network
@@ -88,5 +190,9 @@ networks:
 
 # Volumes
 volumes:
-  mysqldata:
-  admcore:
+  mysqldata_dev_1:
+  mysqldata_dev_2:
+  mysqldata_dev_3:
+  app_dev_1:
+  app_dev_2:
+  app_dev_3:
